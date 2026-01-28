@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Centros Barriales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+        .btn-primary { background-color: rgb(37 99 235); color: white; font-weight: 500; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; }
+        .btn-primary:hover { background-color: rgb(29 78 216); }
+        .btn-success { background-color: rgb(22 163 74); color: white; font-weight: 500; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; }
+        .btn-success:hover { background-color: rgb(21 128 64); }
+        .card { background-color: white; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); border: 1px solid rgb(229 231 235); padding: 24px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; transform: translateX(400px); transition: transform 0.3s ease; z-index: 1000; }
+        .toast.show { transform: translateX(0); }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        .modal.hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div class="px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <button id="menuToggle" class="text-gray-500 hover:text-gray-900 p-2 rounded-md lg:hidden">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="ml-4 text-xl font-bold text-blue-600">
+                        <i class="fas fa-building mr-2"></i>Sistema de Centros Barriales
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Buscar..."
+                        class="hidden md:block px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    />
+                    <button onclick="refreshData()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="relative">
+                        <button onclick="toggleUserMenu()" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <div id="userAvatar" class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                                A
+                            </div>
+                        </button>
+                        <div id="userMenu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                            <div class="py-1">
+                                <a href="#" onclick="showProfile()" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-user mr-2"></i>Mi perfil
+                                </a>
+                                <a href="#" onclick="showSettings()" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-cog mr-2"></i>Configuración
+                                </a>
+                                <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar sesión
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-64 bg-white shadow-md hidden lg:block">
+            <div class="p-4">
+                <div class="mb-6">
+                    <div id="userInfo" class="text-center">
+                        <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-2">
+                            A
+                        </div>
+                        <h3 class="font-medium text-gray-900">Admin Sistema</h3>
+                        <p class="text-xs text-gray-500">admin@centros.com</p>
+                    </div>
+                </div>
+                <nav class="space-y-2">
+                    <a href="#" onclick="showSection('dashboard')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100 bg-blue-50">
+                        <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
+                    </a>
+                    <a href="#" onclick="showSection('centros')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-building mr-3"></i> Centros
+                    </a>
+                    <a href="#" onclick="showSection('usuarios')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-users mr-3"></i> Usuarios
+                    </a>
+                    <a href="#" onclick="showSection('actividades')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-calendar-alt mr-3"></i> Actividades
+                    </a>
+                    <a href="#" onclick="showSection('inscripciones')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-clipboard-list mr-3"></i> Inscripciones
+                    </a>
+                    <a href="#" onclick="showSection('accion-social')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-heart mr-3"></i> Acción Social
+                    </a>
+                    <a href="#" onclick="showSection('reportes')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-chart-bar mr-3"></i> Reportes
+                    </a>
+                    <a href="#" onclick="showSection('configuracion')" class="nav-item flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100">
+                        <i class="fas fa-cog mr-3"></i> Configuración
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="fade-in">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+                    <p class="text-gray-600 mt-2">Panel principal de gestión del sistema</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="card card-hover cursor-pointer" onclick="showSection('centros')">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-blue-100 rounded-lg">
+                                <i class="fas fa-building text-blue-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-sm font-medium text-gray-500">Centros Activos</h3>
+                                <p id="centros-count" class="text-2xl font-bold text-gray-900">7</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-hover cursor-pointer" onclick="showSection('usuarios')">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <i class="fas fa-users text-green-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-sm font-medium text-gray-500">Usuarios Registrados</h3>
+                                <p id="usuarios-count" class="text-2xl font-bold text-gray-900">1,234</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-hover cursor-pointer" onclick="showSection('actividades')">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-yellow-100 rounded-lg">
+                                <i class="fas fa-calendar text-yellow-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-sm font-medium text-gray-500">Actividades</h3>
+                                <p id="actividades-count" class="text-2xl font-bold text-gray-900">45</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-hover cursor-pointer" onclick="showSection('inscripciones')">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-lg">
+                                <i class="fas fa-check-circle text-purple-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-sm font-medium text-gray-500">Inscripciones</h3>
+                                <p id="inscripciones-count" class="text-2xl font-bold text-gray-900">892</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions and Recent Activities -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
+                        <div class="space-y-3">
+                            <button onclick="openModal('inscripcion-modal')" class="btn-primary w-full">
+                                <i class="fas fa-user-plus mr-2"></i> Nueva Inscripción
+                            </button>
+                            <button onclick="openModal('actividad-modal')" class="btn-success w-full">
+                                <i class="fas fa-plus-circle mr-2"></i> Crear Actividad
+                            </button>
+                            <button onclick="openModal('usuario-modal')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">
+                                <i class="fas fa-user-plus mr-2"></i> Registrar Usuario
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Actividades Recientes</h2>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
+                                <div>
+                                    <p class="font-medium text-gray-900">Yoga para Principiantes</p>
+                                    <p class="text-sm text-gray-500">Centro Norte • 15 inscritos</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Activa</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
+                                <div>
+                                    <p class="font-medium text-gray-900">Fútbol Infantil</p>
+                                    <p class="text-sm text-gray-500">Centro Sur • 22 inscritos</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Activa</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
+                                <div>
+                                    <p class="font-medium text-gray-900">Taller de Informática</p>
+                                    <p class="text-sm text-gray-500">Centro Centro • 12 inscritos</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Por Iniciar</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div class="card">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Distribución por Género</h2>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="genderChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Actividades más Demandadas</h2>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="activitiesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Sections (hidden by default) -->
+            <div id="centros-section" class="hidden fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Gestión de Centros</h2>
+                <div class="card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">Lista de Centros</h3>
+                        <button onclick="openModal('centro-modal')" class="btn-primary">
+                            <i class="fas fa-plus mr-2"></i> Nuevo Centro
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="centros-table-body">
+                                <!-- Content loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Similar sections for other modules -->
+            <div id="usuarios-section" class="hidden fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Gestión de Usuarios</h2>
+                <div class="card">
+                    <p class="text-gray-600">Módulo de usuarios en desarrollo...</p>
+                    <p class="text-sm text-gray-500 mt-2">Aquí podrás gestionar todos los usuarios del sistema, con roles, permisos y perfiles completos.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="inscripcion-modal" class="modal hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Nueva Inscripción</h3>
+                <form onsubmit="handleInscripcion(event)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mt-1" placeholder="Juan Pérez">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mt-1" placeholder="juan@email.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">DNI</label>
+                            <input type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mt-1" placeholder="12.345.678">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Actividad</label>
+                            <select required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mt-1">
+                                <option value="">Seleccionar actividad...</option>
+                                <option>Yoga para Principiantes</option>
+                                <option>Fútbol Infantil</option>
+                                <option>Taller de Informática</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="closeModal('inscripcion-modal')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar Inscripción</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // Sistema de Centros Barriales - Dashboard Script
+        let currentUser = null;
+        let sessionToken = null;
+
+        // Datos simulados para la base de datos
+        const centrosData = [
+            { id: 1, nombre: 'Centro Barrial Norte', direccion: 'Av. Principal 123, Zona Norte', telefono: '+54911-1234-5678', activo: true },
+            { id: 2, nombre: 'Centro Barrial Sur', direccion: 'Calle Secundaria 456, Zona Sur', telefono: '+54911-2345-6789', activo: true },
+            { id: 3, nombre: 'Centro Barrial Este', direccion: 'Plaza Central 789, Zona Este', telefono: '+54911-3456-7890', activo: true },
+            { id: 4, nombre: 'Centro Barrial Oeste', direccion: 'Ruta Provincial 101, Zona Oeste', telefono: '+54911-4567-8901', activo: true },
+            { id: 5, nombre: 'Centro Barrial Centro', direccion: 'Av. Central 200, Zona Centro', telefono: '+54911-5678-9012', activo: true },
+            { id: 6, nombre: 'Centro Barrial Costa', direccion: 'Boulevard Costero 300, Zona Costa', telefono: '+54911-6789-0123', activo: true },
+            { id: 7, nombre: 'Centro Barrial Montaña', direccion: 'Camino a la Montaña 400, Zona Montaña', telefono: '+54911-7890-1234', activo: true }
+        ];
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSession();
+            updateStats();
+            initCharts();
+            loadCentrosTable();
+            setupEventListeners();
+        });
+
+        // Verificar sesión
+        function checkSession() {
+            const savedUser = localStorage.getItem('currentUser');
+            const savedToken = localStorage.getItem('sessionToken');
+            
+            if (!savedUser || !savedToken) {
+                window.location.href = 'login-simple.html';
+                return;
+            }
+            
+            currentUser = JSON.parse(savedUser);
+            sessionToken = savedToken;
+            
+            // Actualizar UI con datos del usuario
+            document.getElementById('userInfo').innerHTML = `
+                <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-2">
+                    ${currentUser.name.charAt(0).toUpperCase()}
+                </div>
+                <h3 class="font-medium text-gray-900">${currentUser.name}</h3>
+                <p class="text-xs text-gray-500">${currentUser.email}</p>
+            `;
+            
+            document.getElementById('userAvatar').innerHTML = currentUser.name.charAt(0).toUpperCase();
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            // Animar contadores
+            animateCounter('centros-count', centrosData.length);
+            animateCounter('usuarios-count', 1234);
+            animateCounter('actividades-count', 45);
+            animateCounter('inscripciones-count', 892);
+        }
+
+        // Animar contadores
+        function animateCounter(elementId, target) {
+            const element = document.getElementById(elementId);
+            const duration = 2000;
+            const start = 0;
+            const increment = target / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                element.textContent = Math.floor(current).toLocaleString();
+            }, 16);
+        }
+
+        // Inicializar gráficos
+        function initCharts() {
+            // Gráfico de distribución por género
+            const genderCtx = document.getElementById('genderChart');
+            if (genderCtx) {
+                new Chart(genderCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Masculino', 'Femenino', 'Otro'],
+                        datasets: [{
+                            data: [620, 550, 64],
+                            backgroundColor: [
+                                '#3B82F6',
+                                '#EC4899',
+                                '#10B981'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Gráfico de actividades más demandadas
+            const activitiesCtx = document.getElementById('activitiesChart');
+            if (activitiesCtx) {
+                new Chart(activitiesCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Yoga', 'Fútbol', 'Informática', 'Pintura', 'Música'],
+                        datasets: [{
+                            label: 'Inscriptos',
+                            data: [15, 22, 12, 8, 18],
+                            backgroundColor: '#3B82F6',
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Cargar tabla de centros
+        function loadCentrosTable() {
+            const tbody = document.getElementById('centros-table-body');
+            if (tbody) {
+                tbody.innerHTML = centrosData.map(centro => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${centro.nombre}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${centro.direccion}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${centro.telefono}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${centro.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${centro.activo ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editCentro(${centro.id})" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
+                            <button onclick="deleteCentro(${centro.id})" class="text-red-600 hover:text-red-900">Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Toggle menu
+            document.getElementById('menuToggle').addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('hidden');
+            });
+
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                performSearch(searchTerm);
+            });
+        }
+
+        // Mostrar sección
+        function showSection(sectionId) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('[id$="-section"]').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Mostrar sección seleccionada
+            const targetSection = document.getElementById(sectionId + '-section');
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+            }
+            
+            // Actualizar navegación activa
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('bg-blue-50');
+            });
+            
+            event.target.classList.add('bg-blue-50');
+            
+            showToast(`Sección ${sectionId} cargada`, 'info');
+        }
+
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Form handlers
+        function handleInscripcion(event) {
+            event.preventDefault();
+            
+            closeModal('inscripcion-modal');
+            showToast('Inscripción creada exitosamente', 'success');
+            event.target.reset();
+            
+            // Actualizar contador
+            const inscripcionesCount = document.getElementById('inscripciones-count');
+            const currentCount = parseInt(inscripcionesCount.textContent.replace(',', ''));
+            inscripcionesCount.textContent = (currentCount + 1).toLocaleString();
+        }
+
+        // CRUD operations
+        function editCentro(id) {
+            const centro = centrosData.find(c => c.id === id);
+            if (centro) {
+                showToast(`Editando centro: ${centro.nombre}`, 'info');
+            }
+        }
+
+        function deleteCentro(id) {
+            if (confirm('¿Estás seguro de eliminar este centro?')) {
+                const index = centrosData.findIndex(c => c.id === id);
+                if (index > -1) {
+                    centrosData.splice(index, 1);
+                    loadCentrosTable();
+                    showToast('Centro eliminado exitosamente', 'success');
+                    
+                    // Actualizar contador
+                    document.getElementById('centros-count').textContent = centrosData.length.toLocaleString();
+                }
+            }
+        }
+
+        // User menu functions
+        function toggleUserMenu() {
+            document.getElementById('userMenu').classList.toggle('hidden');
+        }
+
+        function showProfile() {
+            showToast('Abriendo perfil de usuario...', 'info');
+            document.getElementById('userMenu').classList.add('hidden');
+        }
+
+        function showSettings() {
+            showToast('Abriendo configuración...', 'info');
+            document.getElementById('userMenu').classList.add('hidden');
+        }
+
+        function logout() {
+            if (confirm('¿Estás seguro de cerrar sesión?')) {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('sessionToken');
+                showToast('Sesión cerrada exitosamente', 'info');
+                setTimeout(() => {
+                    window.location.href = 'login-simple.html';
+                }, 1500);
+            }
+        }
+
+        // Search functionality
+        function performSearch(term) {
+            if (!term) {
+                return;
+            }
+            
+            console.log('Buscando:', term);
+            showToast(`Resultados para: ${term}`, 'info');
+        }
+
+        // Refresh data
+        function refreshData() {
+            showToast('Actualizando datos...', 'info');
+            setTimeout(() => {
+                updateStats();
+                loadCentrosTable();
+                showToast('Datos actualizados', 'success');
+            }, 1000);
+        }
+
+        // Toast notification system
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast bg-white rounded-lg shadow-lg p-4 mb-2 flex items-center space-x-3 max-w-sm`;
+            
+            let icon = '';
+            let textColor = '';
+            
+            switch(type) {
+                case 'success':
+                    icon = '<i class="fas fa-check-circle text-green-500 text-xl"></i>';
+                    textColor = 'text-green-800';
+                    break;
+                case 'error':
+                    icon = '<i class="fas fa-exclamation-circle text-red-500 text-xl"></i>';
+                    textColor = 'text-red-800';
+                    break;
+                case 'warning':
+                    icon = '<i class="fas fa-exclamation-triangle text-yellow-500 text-xl"></i>';
+                    textColor = 'text-yellow-800';
+                    break;
+                default:
+                    icon = '<i class="fas fa-info-circle text-blue-500 text-xl"></i>';
+                    textColor = 'text-blue-800';
+            }
+            
+            toast.innerHTML = `
+                ${icon}
+                <div class="flex-1">
+                    <p class="${textColor} font-medium">${message}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+        }
+
+        // Click outside to close dropdowns
+        document.addEventListener('click', function(event) {
+            const userMenu = document.getElementById('userMenu');
+            const userButton = event.target.closest('button[onclick="toggleUserMenu()"]');
+            
+            if (!userButton && !userMenu.contains(event.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+
+        // Close modals on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    if (!modal.classList.contains('hidden')) {
+                        modal.classList.add('hidden');
+                    }
+                });
+            }
+        });
+
+        console.log('Dashboard - Sistema de Centros Barriales - Cargado correctamente');
+    </script>
+</body>
+</html>

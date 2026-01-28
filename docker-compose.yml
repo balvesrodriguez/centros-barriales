@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  api:
+    build: ./backend
+    container_name: cb_api
+    ports:
+      - "8000:8000"
+    environment:
+      - JWT_SECRET=change-me-please
+  frontend:
+    image: nginx:alpine
+    container_name: cb_frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
